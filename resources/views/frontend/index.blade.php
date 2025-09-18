@@ -2,30 +2,40 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Products — Browse & Filter</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Products — Browse & Filter (price + sale_price)</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- jQuery (for simplicity of AJAX in this example) -->
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        /* small custom tweaks */
+        .product-card {
+            min-height: 180px;
+        }
+
+        .price-old {
+            text-decoration: line-through;
+            color: #777;
+            margin-right: .5rem;
+        }
+
+        .price-sale {
+            font-weight: 700;
+            color: #d63384;
+        }
+
         .spinner-placeholder {
             min-height: 120px;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .product-card {
-            min-height: 160px;
         }
     </style>
 </head>
@@ -35,11 +45,11 @@
         <div class="row mb-3">
             <div class="col">
                 <h2 class="mb-0">Shop — Products</h2>
-                <small class="text-muted">Filter by category, subcategory, name, slug, price</small>
+                <small class="text-muted">Filter by category, subcategory, name, slug, and effective price (sale price
+                    if available).</small>
             </div>
         </div>
 
-        <!-- Filter row -->
         <div class="card mb-4">
             <div class="card-body">
                 <form id="filterForm" class="row g-2 align-items-end">
@@ -47,7 +57,6 @@
                         <label class="form-label">Category</label>
                         <select id="category_id" name="category_id" class="form-select">
                             <option value="">All categories</option>
-                            <!-- categories populated by JS -->
                         </select>
                     </div>
 
@@ -69,7 +78,7 @@
                     </div>
 
                     <div class="col-md-2">
-                        <label class="form-label">Price (min - max)</label>
+                        <label class="form-label">Effective Price (min - max)</label>
                         <div class="d-flex gap-2">
                             <input id="price_min" name="price_min" type="number" step="0.01" class="form-control"
                                 placeholder="min">
@@ -86,27 +95,21 @@
             </div>
         </div>
 
-        <!-- Results -->
         <div id="resultsArea">
-            <div id="productsGrid" class="row gy-3">
-                <!-- product cards injected here -->
-            </div>
+            <div id="productsGrid" class="row gy-3"></div>
 
-            <nav id="paginationWrapper" class="mt-4" aria-label="Products pagination">
-                <!-- pagination links injected here -->
-            </nav>
+            <nav id="paginationWrapper" class="mt-4" aria-label="Products pagination"></nav>
         </div>
     </div>
 
     <script>
         /*
-      Requirements / expectations:
-      - API endpoints:
-          GET /api/categories            -> returns [{id,name},...]
-          GET /api/categories/{id}/subcategories -> returns [{id,name},...]
-          GET /api/products/filter      -> accepts query params (category_id, subcategory_id, name, slug, price_min, price_max, page)
-                                           returns JSON { data: [ {id,name,slug,category_name,subcategory_name,price,final_price,stock_quantity,thumbnail_url}, ... ], links: '<ul class="pagination">...</ul>' }
-      - If your API returns different field names, adapt the mapping below.
+      API endpoints expected (adjust if different):
+        GET /api/categories                       -> [{id,name},...]
+        GET /api/categories/{id}/subcategories    -> [{id,name},...]
+        GET /api/products/filter                  -> accepts category_id, subcategory_id, name, slug, price_min, price_max, page
+                                                   returns { data: [ {id,name,slug,price,sale_price,final_price,category_name,subcategory_name,stock_quantity,thumbnail_url}, ... ], links: '<ul class="pagination">...</ul>' }
+      Note: final_price should be sale_price when sale_price is set AND sale_price < price, otherwise price.
     */
 
         const API = {
@@ -114,6 +117,16 @@
             subcategories: id => `/api/categories/${id}/subcategories`,
             products: '/api/products/filter'
         };
+
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function formatMoney(val) {
             if (val === null || val === undefined) return '-';
@@ -129,16 +142,29 @@
             }
 
             const html = items.map(p => {
-                const price = (p.final_price != null) ? p.final_price : p.price;
-                const thumb = p.thumbnail_url || 'https://via.placeholder.com/240x160?text=No+Image';
+                const price = (p.price != null) ? parseFloat(p.price) : null;
+                const sale = (p.sale_price != null) ? parseFloat(p.sale_price) : null;
+                const final = (p.final_price != null) ? parseFloat(p.final_price) : (sale && sale < price ? sale :
+                    price);
+                const thumb = p.thumbnail_url || 'https://via.placeholder.com/360x200?text=No+Image';
+
+                // Display: if sale exists and sale < price -> show old price struck and sale highlighted
+                let priceHtml = '';
+                if (sale !== null && sale < price) {
+                    priceHtml =
+                        `<span class="price-old">৳ ${formatMoney(price)}</span><span class="price-sale">৳ ${formatMoney(sale)}</span>`;
+                } else {
+                    priceHtml = `<span class="fw-semibold">৳ ${formatMoney(price)}</span>`;
+                }
+
                 return `
       <div class="col-md-4">
         <div class="card product-card">
-          <img src="${thumb}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:160px; object-fit:cover;">
+          <img src="${escapeHtml(thumb)}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:160px;object-fit:cover;">
           <div class="card-body">
             <h5 class="card-title mb-1">${escapeHtml(p.name)}</h5>
             <small class="text-muted d-block mb-2">/${escapeHtml(p.slug)}</small>
-            <p class="mb-1"><strong>Price:</strong> ৳ ${formatMoney(price)}</p>
+            <p class="mb-1">${priceHtml}</p>
             <p class="mb-1"><small class="text-muted">${escapeHtml(p.category_name || '')} › ${escapeHtml(p.subcategory_name || '')}</small></p>
             <p class="mb-1"><small>Stock: ${p.stock_quantity ?? '-'}</small></p>
             <a href="/product/${p.id}" class="btn btn-sm btn-outline-primary mt-2">View</a>
@@ -151,23 +177,11 @@
             $('#productsGrid').html(html);
         }
 
-        function escapeHtml(unsafe) {
-            if (unsafe === null || unsafe === undefined) return '';
-            return String(unsafe)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
         function loadCategories() {
             $('#category_id').prop('disabled', true);
             $.get(API.categories).done(function(data) {
                 let html = '<option value="">All categories</option>';
-                (data || []).forEach(c => {
-                    html += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
-                });
+                (data || []).forEach(c => html += `<option value="${c.id}">${escapeHtml(c.name)}</option>`);
                 $('#category_id').html(html).prop('disabled', false);
             }).fail(function() {
                 $('#category_id').html('<option value="">Error loading</option>');
@@ -191,7 +205,6 @@
         }
 
         function loadProducts(url) {
-            // if url provided (pagination), use it; else use API.products
             url = url || API.products;
             const payload = {
                 category_id: $('#category_id').val(),
@@ -202,20 +215,16 @@
                 price_max: $('#price_max').val()
             };
 
-            // show spinner/placeholder
             $('#productsGrid').html(
                 '<div class="col-12 spinner-placeholder"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>'
                 );
             $('#paginationWrapper').empty();
 
             $.get(url, payload).done(function(res) {
-                // res expected to contain res.data (array) and res.links (html string)
+                // res: { data: [...], links: '<ul>...</ul>' }
                 renderProducts(res.data || []);
-                if (res.links) {
-                    $('#paginationWrapper').html(res.links);
-                } else {
-                    $('#paginationWrapper').empty();
-                }
+                if (res.links) $('#paginationWrapper').html(res.links);
+                else $('#paginationWrapper').empty();
             }).fail(function(xhr) {
                 const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message :
                     'Could not load products.';
@@ -226,21 +235,15 @@
         }
 
         $(function() {
-            // initial bootstrap
             loadCategories();
-            loadProducts(); // initial product load
+            loadProducts();
 
-            // when category changes, load subcategories
             $('#category_id').on('change', function() {
-                const id = $(this).val();
-                loadSubcategories(id);
+                loadSubcategories($(this).val());
             });
-
-            // apply & reset
             $('#applyFilter').on('click', function() {
                 loadProducts();
             });
-
             $('#resetFilter').on('click', function() {
                 $('#filterForm')[0].reset();
                 $('#subcategory_id').html('<option value="">Select category first</option>').prop(
@@ -248,13 +251,12 @@
                 loadProducts();
             });
 
-            // handle pagination clicks (server should return full <ul class="pagination"> with links)
+            // pagination click handling (expects full links HTML)
             $(document).on('click', '#paginationWrapper a', function(e) {
                 e.preventDefault();
                 const href = $(this).attr('href');
                 if (href) loadProducts(href);
             });
-
         });
     </script>
 </body>
