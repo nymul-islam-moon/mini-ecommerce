@@ -5,19 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Category extends Model
+class SubCategory extends Model
 {
-    /** @use HasFactory<\Database\Factories\CategoryFactory> */
+    /** @use HasFactory<\Database\Factories\SubCategoryFactory> */
     use HasFactory;
 
-    protected $table = 'categories';
+    protected $table = 'sub_categories';
 
     protected $fillable = [
+        'category_id',
         'name',
         'slug',
         'is_active',
-        'description',
+        'description'
     ];
+
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
 
 
     /** Scope: search by name/slug/description */
@@ -36,10 +43,5 @@ class Category extends Model
                 ->orWhere('slug', 'like', $like)
                 ->orWhere('description', 'like', $like);
         });
-    }
-
-    public function subCategories()
-    {
-        return $this->hasMany(SubCategory::class, 'category_id');
     }
 }

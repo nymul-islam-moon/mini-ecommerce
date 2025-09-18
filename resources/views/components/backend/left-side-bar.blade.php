@@ -11,8 +11,8 @@
              <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="navigation" aria-label="Main navigation" data-accordion="false" id="navigation">
  
                 <li class="nav-header">PRODUCTS</li>
-                <x-backend.left-side-bar-item name="Categories" route="" />
-                <x-backend.left-side-bar-item name="Sub-Categories" route="" />
+                <x-backend.left-side-bar-item name="Categories" route="{{ route('backend.categories.index') }}" />
+                <x-backend.left-side-bar-item name="Sub-Categories" route="{{ route('backend.sub-categories.index') }}" />
                 <x-backend.left-side-bar-item name="products" route="" />
                 
              </ul>

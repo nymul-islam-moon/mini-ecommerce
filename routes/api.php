@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Frontend\ProductFilterController;
+use App\Http\Controllers\Api\SelectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +11,6 @@ use Illuminate\Support\Facades\Route;
 
 
 
-Route::get('categories', [ProductFilterController::class, 'categories']);
-Route::get('categories/{id}/subcategories', [ProductFilterController::class, 'subcategories']);
+Route::get('categories', [SelectController::class, 'categories']);
+Route::get('categories/{id}/subcategories', [SelectController::class, 'subcategories']);
 Route::get('products/filter', [ProductFilterController::class, 'filter']); // returns JSON for frontend

@@ -4,16 +4,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Products — Browse & Filter (price + sale_price)</title>
+    <title>Products — Browse & Filter (Select2 + sale_price)</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <style>
         .product-card {
@@ -37,6 +34,11 @@
             align-items: center;
             justify-content: center;
         }
+
+        .select2-container--bootstrap5 .select2-selection {
+            height: calc(2.25rem + 2px);
+            padding: .375rem .75rem;
+        }
     </style>
 </head>
 
@@ -45,26 +47,22 @@
         <div class="row mb-3">
             <div class="col">
                 <h2 class="mb-0">Shop — Products</h2>
-                <small class="text-muted">Filter by category, subcategory, name, slug, and effective price (sale price
-                    if available).</small>
+                <small class="text-muted">Filter by category, subcategory (Select2), name, slug, and effective price
+                    (sale price if available).</small>
             </div>
         </div>
 
         <div class="card mb-4">
             <div class="card-body">
                 <form id="filterForm" class="row g-2 align-items-end">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Category</label>
-                        <select id="category_id" name="category_id" class="form-select">
-                            <option value="">All categories</option>
-                        </select>
+                        <select id="category_id" name="category_id" class="form-select"></select>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Subcategory</label>
-                        <select id="subcategory_id" name="subcategory_id" class="form-select" disabled>
-                            <option value="">Select category first</option>
-                        </select>
+                        <select id="subcategory_id" name="subcategory_id" class="form-select"></select>
                     </div>
 
                     <div class="col-md-2">
@@ -77,7 +75,7 @@
                         <input id="slug" name="slug" class="form-control" placeholder="product-slug">
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-4 mt-2">
                         <label class="form-label">Effective Price (min - max)</label>
                         <div class="d-flex gap-2">
                             <input id="price_min" name="price_min" type="number" step="0.01" class="form-control"
@@ -102,14 +100,24 @@
         </div>
     </div>
 
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Optional: Select2 Bootstrap 5 theme (keeps look consistent) -->
+    <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css"
+        rel="stylesheet" />
+
     <script>
         /*
-      API endpoints expected (adjust if different):
-        GET /api/categories                       -> [{id,name},...]
-        GET /api/categories/{id}/subcategories    -> [{id,name},...]
-        GET /api/products/filter                  -> accepts category_id, subcategory_id, name, slug, price_min, price_max, page
-                                                   returns { data: [ {id,name,slug,price,sale_price,final_price,category_name,subcategory_name,stock_quantity,thumbnail_url}, ... ], links: '<ul class="pagination">...</ul>' }
-      Note: final_price should be sale_price when sale_price is set AND sale_price < price, otherwise price.
+      This frontend uses Select2 (AJAX-mode) for both category and subcategory selects.
+      The endpoints used by Select2 are:
+        GET /api/categories?q=search&page=1   -> returns { results: [{ id, text }] , pagination: { more: true/false } }
+        GET /api/categories/{id}/subcategories?q=search&page=1 -> same shape
+
+      Backend controller below includes Select2-friendly responses (see the two controller methods at the bottom of this doc).
     */
 
         const API = {
@@ -148,7 +156,6 @@
                     price);
                 const thumb = p.thumbnail_url || 'https://via.placeholder.com/360x200?text=No+Image';
 
-                // Display: if sale exists and sale < price -> show old price struck and sale highlighted
                 let priceHtml = '';
                 if (sale !== null && sale < price) {
                     priceHtml =
@@ -177,31 +184,113 @@
             $('#productsGrid').html(html);
         }
 
-        function loadCategories() {
-            $('#category_id').prop('disabled', true);
-            $.get(API.categories).done(function(data) {
-                let html = '<option value="">All categories</option>';
-                (data || []).forEach(c => html += `<option value="${c.id}">${escapeHtml(c.name)}</option>`);
-                $('#category_id').html(html).prop('disabled', false);
-            }).fail(function() {
-                $('#category_id').html('<option value="">Error loading</option>');
+        // Initialize Select2 for category (AJAX)
+        function initCategorySelect2() {
+            $('#category_id').select2({
+                theme: 'bootstrap4',
+                placeholder: 'All categories',
+                allowClear: true,
+                ajax: {
+                    url: API.categories,
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term || '',
+                            page: params.page || 1,
+                        };
+                    },
+                    processResults: function(data, params) {
+                        params.page = params.page || 1;
+                        // Expect backend to return Select2 format: { results: [{id, text}], pagination: { more: bool } }
+                        if (Array.isArray(data)) {
+                            // if backend returned plain array [{id,name}] adapt it
+                            const results = data.map(i => ({
+                                id: i.id,
+                                text: i.name
+                            }));
+                            return {
+                                results: results,
+                                pagination: {
+                                    more: false
+                                }
+                            };
+                        }
+                        return data;
+                    },
+                    cache: true
+                }
+            });
+
+            // when category changes, clear and refresh subcategory select2
+            $('#category_id').on('change', function() {
+                const cid = $(this).val();
+                // clear current subcategory selection and set param
+                $('#subcategory_id').val(null).trigger('change');
+
+                // destroy and re-init subcategory select2 with the chosen category param
+                initSubcategorySelect2(cid);
             });
         }
 
-        function loadSubcategories(categoryId) {
-            const $sub = $('#subcategory_id');
-            if (!categoryId) {
-                $sub.html('<option value="">Select category first</option>').prop('disabled', true);
-                return;
+        // Initialize Select2 for subcategory; takes categoryId (may be null)
+        function initSubcategorySelect2(categoryId) {
+            // destroy old instance if exists
+            if ($.fn.select2 && $('#subcategory_id').data('select2')) {
+                $('#subcategory_id').select2('destroy');
+                $('#subcategory_id').empty();
             }
-            $sub.prop('disabled', true).html('<option>Loading...</option>');
-            $.get(API.subcategories(categoryId)).done(function(data) {
-                let html = '<option value="">All subcategories</option>';
-                (data || []).forEach(s => html += `<option value="${s.id}">${escapeHtml(s.name)}</option>`);
-                $sub.html(html).prop('disabled', false);
-            }).fail(function() {
-                $sub.html('<option value="">Error</option>').prop('disabled', true);
+
+            $('#subcategory_id').select2({
+                theme: 'bootstrap4',
+                placeholder: categoryId ? 'All subcategories' : 'Select category first',
+                allowClear: true,
+                ajax: {
+                    url: function() {
+                        if (!categoryId) return API.categories; // fallback: list categories (none will match)
+                        return API.subcategories(categoryId);
+                    },
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term || '',
+                            page: params.page || 1,
+                        };
+                    },
+                    processResults: function(data, params) {
+                        if (Array.isArray(data)) {
+                            const results = data.map(i => ({
+                                id: i.id,
+                                text: i.name
+                            }));
+                            return {
+                                results: results,
+                                pagination: {
+                                    more: false
+                                }
+                            };
+                        }
+                        return data;
+                    },
+                    cache: true
+                }
             });
+
+            // if no categoryId, disable the control visually
+            if (!categoryId) {
+                $('#subcategory_id').prop('disabled', true);
+                (function enableWhenNext() {
+                    // keep it disabled until category is selected (Select2 shows placeholder)
+                    setTimeout(function() {
+                        if ($('#category_id').val()) {
+                            $('#subcategory_id').prop('disabled', false);
+                        } else enableWhenNext();
+                    }, 300);
+                })();
+            } else {
+                $('#subcategory_id').prop('disabled', false);
+            }
         }
 
         function loadProducts(url) {
@@ -221,7 +310,6 @@
             $('#paginationWrapper').empty();
 
             $.get(url, payload).done(function(res) {
-                // res: { data: [...], links: '<ul>...</ul>' }
                 renderProducts(res.data || []);
                 if (res.links) $('#paginationWrapper').html(res.links);
                 else $('#paginationWrapper').empty();
@@ -235,23 +323,26 @@
         }
 
         $(function() {
-            loadCategories();
+            // init Select2 controls
+            initCategorySelect2();
+            initSubcategorySelect2(null); // disabled until category chosen
+
+            // initial product load
             loadProducts();
 
-            $('#category_id').on('change', function() {
-                loadSubcategories($(this).val());
-            });
             $('#applyFilter').on('click', function() {
                 loadProducts();
             });
             $('#resetFilter').on('click', function() {
                 $('#filterForm')[0].reset();
-                $('#subcategory_id').html('<option value="">Select category first</option>').prop(
-                    'disabled', true);
+                // reset Select2 controls
+                $('#category_id').val(null).trigger('change');
+                $('#subcategory_id').val(null).trigger('change');
+                initSubcategorySelect2(null);
                 loadProducts();
             });
 
-            // pagination click handling (expects full links HTML)
+            // handle pagination clicks
             $(document).on('click', '#paginationWrapper a', function(e) {
                 e.preventDefault();
                 const href = $(this).attr('href');
@@ -259,6 +350,7 @@
             });
         });
     </script>
+
 </body>
 
 </html>
