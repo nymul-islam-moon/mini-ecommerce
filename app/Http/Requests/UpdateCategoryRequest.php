@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class UpdateCategoryRequest extends FormRequest
 {
@@ -11,7 +14,18 @@ class UpdateCategoryRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
+    }
+
+    protected $stopOnFirstFailure = true;
+
+    public function attributes(): array
+    {
+        return [
+            'name'          => 'category name',
+            'is_active'     => 'status',
+            'description'   => 'description',
+        ];
     }
 
     /**
@@ -22,7 +36,29 @@ class UpdateCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name'              => ['required', 'string', 'max:255', 'unique:categories,name,' . $this->category->id],
+            'is_active'         => ['boolean'],
+            'slug'              => ['required', 'string', 'max:255', 'unique:categories,slug,' . $this->category->id],
+            'description'       => ['nullable', 'string', 'max:255']
         ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Please enter a :attribute.',
+            'name.unique'   => 'The :attribute ":imput" is already in use.',
+            'name.max'      => 'The :attribute may not be greater than :max characters.',
+        ];
+    }
+
+
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'name'      => $this->has('name') ? Str::ucfirst(Str::lower($this->input('name'))) : null,
+            'slug'      => $this->has('name') ? Str::slug($this->input('name')) : null,
+            'is_active' => $this->has('is_active') ? (bool)$this->input('is_active') : false,
+        ]);
     }
 }

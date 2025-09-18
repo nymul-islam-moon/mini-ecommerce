@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::prefix('backend')
                 ->as('backend.')
+                ->middleware(['web'])
                 ->group(base_path('routes/backend.php'));
         }
     )
