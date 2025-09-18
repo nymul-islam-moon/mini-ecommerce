@@ -11,6 +11,6 @@ use Illuminate\Support\Facades\Route;
 
 
 
-Route::get('categories', [SelectController::class, 'categories']);
-Route::get('categories/{id}/subcategories', [SelectController::class, 'subcategories']);
+Route::get('categories', [SelectController::class, 'categories'])->name('api.categories');
+Route::get('categories/{id}/subcategories', [SelectController::class, 'subcategories'])->name('api.sub-categories');
 Route::get('products/filter', [ProductFilterController::class, 'filter']); // returns JSON for frontend

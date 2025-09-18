@@ -13,7 +13,7 @@
                 <li class="nav-header">PRODUCTS</li>
                 <x-backend.left-side-bar-item name="Categories" route="{{ route('backend.categories.index') }}" />
                 <x-backend.left-side-bar-item name="Sub-Categories" route="{{ route('backend.sub-categories.index') }}" />
-                <x-backend.left-side-bar-item name="products" route="" />
+                <x-backend.left-side-bar-item name="products" route="{{ route('backend.products.index') }}" />
                 
              </ul>
 

@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSubCategoryRequest;
 use App\Http\Requests\UpdateSubCategoryRequest;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Models\SubCategory;
 
 class SubCategoryController extends Controller
@@ -43,7 +46,22 @@ class SubCategoryController extends Controller
      */
     public function store(StoreSubCategoryRequest $request)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+            $formData = $request->validated();
+
+            SubCategory::create($formData);
+            DB::commit();
+            return redirect()->route('backend.sub-categories.index')
+                   ->with('success', 'Sub-category created successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating sub-category: ' . $e->getMessage());
+            return redirect()->back()
+                   ->withInput()
+                   ->with('error', 'An error occurred while creating the sub-category.');
+        }
     }
 
     /**
