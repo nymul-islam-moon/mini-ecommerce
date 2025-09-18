@@ -4,7 +4,6 @@
 
 @push('backend_styles')
     <style>
-        /* Small UI polish to make the card feel lighter and modern */
         .card {
             border-radius: .75rem;
             box-shadow: 0 6px 18px rgba(29, 31, 45, 0.06);
@@ -27,9 +26,7 @@
 
 @section('admin_content')
     <div class="app-content-header">
-        <!--begin::Container-->
         <div class="container-fluid">
-            <!--begin::Row-->
             <div class="row">
                 <div class="col-sm-6">
                     <h3 class="mb-0">Edit Category</h3>
@@ -42,21 +39,17 @@
                     ]" />
                 </div>
             </div>
-            <!--end::Row-->
         </div>
-        <!--end::Container-->
     </div>
 
     <div class="app-content">
         <div class="container-fluid">
             <div class="row justify-content-center">
                 <div class="col-lg-8">
-                    <!-- Category Edit Card -->
                     <div class="card">
                         <div class="card-header d-flex align-items-center">
                             <div>
                                 <h3 class="card-title mb-0">Edit Category - {{ $category->name }}</h3>
-                                {{-- <small class="text-muted">ID: <span class="fw-semibold">{{ $category->id }}</span></small> --}}
                             </div>
 
                             <div class="ms-auto d-flex gap-2">
@@ -79,7 +72,6 @@
                                 @csrf
                                 @method('PUT')
 
-                                <!-- Category Name -->
                                 <div class="mb-3">
                                     <label for="name" class="form-label small">Category Name <span
                                             class="text-danger">*</span></label>
@@ -92,7 +84,6 @@
                                     @enderror
                                 </div>
 
-                                <!-- Category Status -->
                                 <div class="mb-3">
                                     <label for="is_active" class="form-label small">Select Status <span
                                             class="text-danger">*</span></label>
@@ -110,7 +101,6 @@
                                 </div>
 
 
-                                <!-- Category Description -->
                                 <div class="mb-3">
                                     <label for="description" class="form-label small">Description</label>
                                     <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror"
@@ -120,7 +110,6 @@
                                     @enderror
                                 </div>
 
-                                <!-- Submit Button -->
                                 <div class="d-flex justify-content-between align-items-center">
                                     <a href="{{ route('backend.categories.index') }}" class="btn btn-secondary">
                                         <i class="bi bi-arrow-left"></i> Back
@@ -131,7 +120,6 @@
                                 </div>
                             </form>
                         </div>
-
                         <div class="card-footer d-flex align-items-center justify-content-between">
                             <div class="small text-muted">
                                 Created: {{ optional($category->created_at)->format('M d, Y h:i A') }}
@@ -141,9 +129,7 @@
                                 Last updated: {{ optional($category->updated_at)->diffForHumans() ?? '—' }}
                             </div>
                         </div>
-
                     </div>
-                    <!-- End Card -->
                 </div>
             </div>
         </div>
