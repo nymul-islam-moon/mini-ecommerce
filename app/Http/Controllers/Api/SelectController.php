@@ -11,7 +11,7 @@ class SelectController extends Controller
     public function categories(Request $request)
     {
         // Support Select2: q param (search), page param for pagination
-        $q = Category::query();
+        $q = Category::where('is_active', 1);
 
         if ($request->filled('q')) {
             $q->where('name', 'like', '%' . $request->q . '%');
@@ -45,7 +45,7 @@ class SelectController extends Controller
             return response()->json($request->has('page') ? ['results' => [], 'pagination' => ['more' => false]] : []);
         }
 
-        $q = $category->subcategories();
+        $q = $category->subcategories()->where('is_active', 1);
         if ($request->filled('q')) {
             $q->where('name', 'like', '%' . $request->q . '%');
         }

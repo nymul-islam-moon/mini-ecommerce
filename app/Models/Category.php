@@ -19,6 +19,11 @@ class Category extends Model
         'description',
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+
 
     /** Scope: search by name/slug/description */
     public function scopeSearch($query, ?string $term)

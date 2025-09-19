@@ -87,16 +87,63 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        //
+        return view('backend.products.edit', compact('product'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProductRequest $request, Product $product)
+    public function update(UpdateProductRequest $request, Product $product, MediaService $mediaService)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+            $formData = $request->validated();
+
+            // Normalize sale_price empty string to null
+            if (array_key_exists('sale_price', $formData) && $formData['sale_price'] === '') {
+                $formData['sale_price'] = null;
+            }
+
+            // Handle main image replacement
+            if ($request->hasFile('main_image')) {
+                // Delete old file if exists
+                if (!empty($product->main_image)) {
+                    try {
+                        $mediaService->deleteFile($product->main_image);
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to delete old main image during product update: ' . $e->getMessage(), [
+                            'product_id' => $product->id,
+                            'old_path'   => $product->main_image,
+                        ]);
+                    }
+                }
+
+                // Store new image
+                $formData['main_image'] = $mediaService->storeFile(
+                    $request->file('main_image'),
+                    'products/main_images'
+                );
+            }
+
+            // Update product
+            $product->update($formData);
+
+            DB::commit();
+
+            return redirect()->route('backend.products.index')
+                ->with('success', 'Product updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Product creation failed: ' . $e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Something went wrong while updating the product.');
+        }
     }
+
 
     /**
      * Remove the specified resource from storage.

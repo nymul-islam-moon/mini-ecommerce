@@ -9,51 +9,7 @@ use Illuminate\Http\Request;
 
 class ProductFilterController extends Controller
 {
-    /**
-     * Return categories for Select2 (or any frontend).
-     * GET /categories
-     */
-    public function categories(Request $request)
-    {
-        // Optionally allow q search param for Select2 filtering
-        $q = (string) $request->query('q', '');
-
-        $cats = Category::select('id', 'name')
-            ->when($q !== '', function ($qry) use ($q) {
-                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
-                $qry->where('name', 'like', $like);
-            })
-            ->orderBy('name')
-            ->get();
-
-        return response()->json($cats);
-    }
-
-    /**
-     * Return subcategories for a category.
-     * GET /categories/{id}/subcategories
-     */
-    public function subcategories($id, Request $request)
-    {
-        $q = (string) $request->query('q', '');
-
-        $category = Category::find($id);
-        if (!$category) {
-            return response()->json([], 200);
-        }
-
-        $subs = $category->subcategories()
-            ->select('id', 'name')
-            ->when($q !== '', function ($qry) use ($q) {
-                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
-                $qry->where('name', 'like', $like);
-            })
-            ->orderBy('name')
-            ->get();
-
-        return response()->json($subs);
-    }
-
+    
     /**
      * Filter products endpoint used by frontend.
      * Accepts category_id, subcategory_id (or sub_category_id), name, slug, price_min, price_max, etc.

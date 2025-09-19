@@ -90,9 +90,9 @@
                                     <select name="is_active" id="category_status"
                                         class="form-select select2 @error('is_active') is-invalid @enderror" required>
                                         <option value="1"
-                                            {{ old('is_active', $category->status) == '1' ? 'selected' : '' }}>Active</option>
+                                            {{ old('is_active', $category->is_active) == '1' ? 'selected' : '' }}>Active</option>
                                         <option value="0"
-                                            {{ old('is_active', $category->status) == '0' ? 'selected' : '' }}>Inactive
+                                            {{ old('is_active', $category->is_active) == '0' ? 'selected' : '' }}>Inactive
                                         </option>
                                     </select>
                                     @error('is_active')
