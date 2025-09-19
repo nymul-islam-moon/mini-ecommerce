@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 @endpush
 
-@section('admin_content')
+@section('backend_content')
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">

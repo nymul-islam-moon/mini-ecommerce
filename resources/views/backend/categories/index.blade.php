@@ -3,7 +3,7 @@
 
 @section('title', 'Product Category')
 
-@section('admin_content')
+@section('backend_content')
     <div class="app-content-header">
         <div class="container-fluid">
             <div class="row">

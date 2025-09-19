@@ -3,7 +3,7 @@
 
 @section('title', 'Products')
 
-@section('admin_content')
+@section('backend_content')
     <div class="app-content-header">
         <div class="container-fluid">
             <div class="row">
@@ -100,7 +100,7 @@
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                        <a href="{{ route('backend.products.show', $product) }}"
+                                                        <a href="{{ route('frontend.product.show', $product->slug) }}"
                                                             class="btn btn-sm btn-outline-secondary" title="View">
                                                             <i class="bi bi-eye"></i>
                                                         </a>

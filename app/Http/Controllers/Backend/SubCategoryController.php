@@ -69,7 +69,7 @@ class SubCategoryController extends Controller
      */
     public function show(SubCategory $subCategory)
     {
-        //
+        return view('backend.sub_categories.show', compact('subCategory'));
     }
 
     /**
@@ -77,7 +77,7 @@ class SubCategoryController extends Controller
      */
     public function edit(SubCategory $subCategory)
     {
-        //
+        return view('backend.sub_categories.edit', compact('subCategory'));
     }
 
     /**
@@ -85,7 +85,22 @@ class SubCategoryController extends Controller
      */
     public function update(UpdateSubCategoryRequest $request, SubCategory $subCategory)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+            $formData = $request->validated();
+
+            $subCategory->update($formData);
+            DB::commit();
+            return redirect()->route('backend.sub-categories.index')
+                   ->with('success', 'Sub-category updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating sub-category: ' . $e->getMessage());
+            return redirect()->back()
+                     ->withInput()
+                     ->with('error', 'An error occurred while updating the sub-category.');
+        }
     }
 
     /**
@@ -93,6 +108,19 @@ class SubCategoryController extends Controller
      */
     public function destroy(SubCategory $subCategory)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+            $subCategory->delete();
+            DB::commit();
+            return redirect()->route('backend.sub-categories.index')
+                     ->with('success', 'Sub-category deleted successfully.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting sub-category: ' . $e->getMessage());
+            return redirect()->back()
+                     ->with('error', 'An error occurred while deleting the sub-category.');
+        }
     }
 }

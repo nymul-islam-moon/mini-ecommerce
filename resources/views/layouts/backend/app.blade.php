@@ -91,7 +91,7 @@
         <x-backend.left-side-bar />
 
         <main class="app-main">
-            @yield('admin_content')
+            @yield('backend_content')
         </main>
 
         <footer class="app-footer">
