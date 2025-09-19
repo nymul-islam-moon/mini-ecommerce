@@ -144,9 +144,19 @@
                                                 class="text-danger">*</span></label>
                                         <select name="category_id" id="category_id"
                                             class="form-select @error('category_id') is-invalid @enderror" required>
-                                            @if (old('category_id') || $product->category_id)
-                                                <option value="{{ old('category_id', $product->category_id) }}" selected>
-                                                    {{ old('category_name', $product->category?->name ?? '') }}
+                                            @php
+                                                // Use parent category from product->subCategory->category if product doesn't have direct category column
+$preCategoryId = old(
+    'category_id',
+    $product->subCategory?->category?->id ?? null,
+);
+$preCategoryName = old(
+    'category_name',
+    $product->subCategory?->category?->name ?? '',
+                                                );
+                                            @endphp
+                                            @if ($preCategoryId)
+                                                <option value="{{ $preCategoryId }}" selected>{{ $preCategoryName }}
                                                 </option>
                                             @endif
                                         </select>
@@ -172,6 +182,7 @@
                                         @enderror
                                     </div>
                                 </div>
+
 
                                 {{-- Status --}}
                                 <div class="mb-3">
@@ -316,21 +327,31 @@
 
             // Preload old category/subcategory
             (function() {
-                const oldCatId = '{{ old('category_id', $product->category_id) }}';
+                const oldCatId = '{{ old('category_id', $product->subCategory?->category?->id ?? '') }}';
+                const oldCatName = '{{ old('category_name', $product->subCategory?->category?->name ?? '') }}';
                 const oldSubId = '{{ old('sub_category_id', $product->sub_category_id) }}';
                 const oldSubName = '{{ old('sub_category_name', $product->subCategory?->name) ?? '' }}';
+
+                // If we have a preselected category, ensure the category Select2 shows it
                 if (oldCatId) {
+                    const catOption = new Option(oldCatName || 'Selected Category', oldCatId, true, true);
+                    $category.append(catOption).trigger('change');
+                    // initialize subselect for that category and preselect the subcategory
                     initSubSelectForCategory(oldCatId, oldSubId, oldSubName);
                 } else {
-                    if (!$sub.hasClass('select2-hidden-accessible')) $sub.select2({
-                        theme: 'bootstrap4',
-                        placeholder: "Select Sub Category (choose Category first)",
-                        allowClear: true,
-                        width: '100%',
-                        data: []
-                    });
+                    // No preselected category: initialize empty sub select (disabled until category chosen)
+                    if (!$sub.hasClass('select2-hidden-accessible')) {
+                        $sub.select2({
+                            theme: 'bootstrap4',
+                            placeholder: "Select Sub Category (choose Category first)",
+                            allowClear: true,
+                            width: '100%',
+                            data: []
+                        });
+                    }
                 }
             })();
+
 
             // Validate sale_price < price
             $('#product-edit-form').on('submit', function(e) {
