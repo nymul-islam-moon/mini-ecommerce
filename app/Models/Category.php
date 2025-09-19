@@ -42,4 +42,17 @@ class Category extends Model
     {
         return $this->hasMany(SubCategory::class, 'category_id');
     }
+
+    // Category.php
+    public function products()
+    {
+        return $this->hasManyThrough(
+            \App\Models\Product::class,
+            \App\Models\SubCategory::class,
+            'category_id',    // Foreign key on sub_categories table...
+            'sub_category_id', // Foreign key on products table...
+            'id',             // Local key on categories
+            'id'              // Local key on sub_categories
+        );
+    }
 }

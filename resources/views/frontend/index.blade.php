@@ -1,17 +1,7 @@
-<!doctype html>
-<html lang="en">
+@extends('layouts.frontend.app')
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Products — Browse & Filter (Select2 + sale_price)</title>
 
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
+@push('frontend_styles')
     <style>
         .product-card {
             min-height: 180px;
@@ -40,9 +30,9 @@
             padding: .375rem .75rem;
         }
     </style>
-</head>
+@endpush
 
-<body>
+@section('frontend_content')
     <div class="container py-4">
         <div class="row mb-3">
             <div class="col">
@@ -99,27 +89,10 @@
             <nav id="paginationWrapper" class="mt-4" aria-label="Products pagination"></nav>
         </div>
     </div>
+@endsection
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <!-- Optional: Select2 Bootstrap 5 theme (keeps look consistent) -->
-    <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css"
-        rel="stylesheet" />
-
+@push('frontend_scripts')
     <script>
-        /*
-      This frontend uses Select2 (AJAX-mode) for both category and subcategory selects.
-      The endpoints used by Select2 are:
-        GET /api/categories?q=search&page=1   -> returns { results: [{ id, text }] , pagination: { more: true/false } }
-        GET /api/categories/{id}/subcategories?q=search&page=1 -> same shape
-
-      Backend controller below includes Select2-friendly responses (see the two controller methods at the bottom of this doc).
-    */
-
         const API = {
             categories: '/api/categories',
             subcategories: id => `/api/categories/${id}/subcategories`,
@@ -154,7 +127,10 @@
                 const sale = (p.sale_price != null) ? parseFloat(p.sale_price) : null;
                 const final = (p.final_price != null) ? parseFloat(p.final_price) : (sale && sale < price ? sale :
                     price);
-                const thumb = p.thumbnail_url || 'https://via.placeholder.com/360x200?text=No+Image';
+                const thumb = p.thumbnail_url ?
+                    '/storage/' + p.thumbnail_url.replace(/^public\//, '') :
+                    'https://via.placeholder.com/360x200?text=No+Image';
+
 
                 let priceHtml = '';
                 if (sale !== null && sale < price) {
@@ -165,20 +141,20 @@
                 }
 
                 return `
-      <div class="col-md-4">
-        <div class="card product-card">
-          <img src="${escapeHtml(thumb)}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:160px;object-fit:cover;">
-          <div class="card-body">
-            <h5 class="card-title mb-1">${escapeHtml(p.name)}</h5>
-            <small class="text-muted d-block mb-2">/${escapeHtml(p.slug)}</small>
-            <p class="mb-1">${priceHtml}</p>
-            <p class="mb-1"><small class="text-muted">${escapeHtml(p.category_name || '')} › ${escapeHtml(p.subcategory_name || '')}</small></p>
-            <p class="mb-1"><small>Stock: ${p.stock_quantity ?? '-'}</small></p>
-            <a href="/product/${p.id}" class="btn btn-sm btn-outline-primary mt-2">View</a>
-          </div>
-        </div>
-      </div>
-    `;
+                    <div class="col-md-4">
+                        <div class="card product-card">
+                        <img src="${escapeHtml(thumb)}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:160px;object-fit:cover;">
+                        <div class="card-body">
+                            <h5 class="card-title mb-1">${escapeHtml(p.name)}</h5>
+                            <small class="text-muted d-block mb-2">/${escapeHtml(p.slug)}</small>
+                            <p class="mb-1">${priceHtml}</p>
+                            <p class="mb-1"><small class="text-muted">${escapeHtml(p.category_name || '')} › ${escapeHtml(p.subcategory_name || '')}</small></p>
+                            <p class="mb-1"><small>Stock: ${p.stock_quantity ?? '-'}</small></p>
+                            <a href="/product/${p.slug}" class="btn btn-sm btn-outline-primary mt-2">View</a>
+                        </div>
+                        </div>
+                    </div>
+                    `;
             }).join('');
 
             $('#productsGrid').html(html);
@@ -306,7 +282,7 @@
 
             $('#productsGrid').html(
                 '<div class="col-12 spinner-placeholder"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>'
-                );
+            );
             $('#paginationWrapper').empty();
 
             $.get(url, payload).done(function(res) {
@@ -350,7 +326,4 @@
             });
         });
     </script>
-
-</body>
-
-</html>
+@endpush

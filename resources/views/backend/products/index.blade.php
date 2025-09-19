@@ -92,11 +92,11 @@
 
                                                 <td>
                                                     <span
-                                                        class="badge bg-info">{{ $product->category ?? 'N/A'}}</span>
+                                                        class="badge bg-info">{{ $product->subCategory->category->name ?? 'N/A'}}</span>
                                                 </td>
                                                 <td>
                                                     <span
-                                                        class="badge bg-info">{{ $product->subCategory ?? 'N/A' }}</span>
+                                                        class="badge bg-info">{{ $product->subCategory->name ?? 'N/A' }}</span>
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-center gap-1 flex-wrap">

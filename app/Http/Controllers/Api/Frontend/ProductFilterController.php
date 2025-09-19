@@ -9,81 +9,94 @@ use Illuminate\Http\Request;
 
 class ProductFilterController extends Controller
 {
-    public function categories()
+    /**
+     * Return categories for Select2 (or any frontend).
+     * GET /categories
+     */
+    public function categories(Request $request)
     {
-        $cats = Category::select('id', 'name')->orderBy('name')->get();
+        // Optionally allow q search param for Select2 filtering
+        $q = (string) $request->query('q', '');
+
+        $cats = Category::select('id', 'name')
+            ->when($q !== '', function ($qry) use ($q) {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
+                $qry->where('name', 'like', $like);
+            })
+            ->orderBy('name')
+            ->get();
+
         return response()->json($cats);
     }
 
-    public function subcategories($id)
+    /**
+     * Return subcategories for a category.
+     * GET /categories/{id}/subcategories
+     */
+    public function subcategories($id, Request $request)
     {
+        $q = (string) $request->query('q', '');
+
         $category = Category::find($id);
         if (!$category) {
             return response()->json([], 200);
         }
-        $subs = $category->subcategories()->select('id', 'name')->orderBy('name')->get();
+
+        $subs = $category->subcategories()
+            ->select('id', 'name')
+            ->when($q !== '', function ($qry) use ($q) {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
+                $qry->where('name', 'like', $like);
+            })
+            ->orderBy('name')
+            ->get();
+
         return response()->json($subs);
     }
 
+    /**
+     * Filter products endpoint used by frontend.
+     * Accepts category_id, subcategory_id (or sub_category_id), name, slug, price_min, price_max, etc.
+     */
     public function filter(Request $request)
     {
-        // Build base query. Eager load small relations to avoid N+1
-        $q = Product::query()->with(['category', 'subcategory']);
+        $perPage = (int) $request->input('per_page', 12);
 
-        if ($request->filled('category_id')) {
-            $q->where('category_id', $request->category_id);
-        }
-        if ($request->filled('subcategory_id')) {
-            $q->where('subcategory_id', $request->subcategory_id);
-        }
-        if ($request->filled('name')) {
-            $q->where('name', 'like', '%' . $request->name . '%');
-        }
-        if ($request->filled('slug')) {
-            $q->where('slug', 'like', '%' . $request->slug . '%');
-        }
+        // Build query using Product model scopes (clean and testable)
+        $q = Product::query()
+            ->withRelations() // eager load subCategory.category
+            ->applyFilter($request);
 
-        // Filter by effective/final price: use CASE to compute final_price in SQL
-        // final_price = CASE WHEN sale_price IS NOT NULL AND sale_price < price THEN sale_price ELSE price END
-        // Apply min / max comparators if provided.
-        if ($request->filled('price_min')) {
-            $min = (float) $request->price_min;
-            $q->whereRaw('CASE WHEN sale_price IS NOT NULL AND sale_price < price THEN sale_price ELSE price END >= ?', [$min]);
-        }
-        if ($request->filled('price_max')) {
-            $max = (float) $request->price_max;
-            $q->whereRaw('CASE WHEN sale_price IS NOT NULL AND sale_price < price THEN sale_price ELSE price END <= ?', [$max]);
-        }
-
-        // Pagination
-        $perPage = 12;
-        $products = $q->orderBy('created_at', 'desc')->paginate($perPage);
+        // ordering
+        $products = $q->where('is_active', 1)->orderBy('created_at', 'desc')->paginate($perPage);
 
         // Map output
         $data = $products->getCollection()->map(function ($p) {
-            // compute final_price in PHP as well (safety)
-            $price = $p->price ?? null;
-            $sale  = $p->sale_price ?? null;
-            $final = ($sale !== null && $sale < $price) ? $sale : $price;
-
             return [
                 'id' => $p->id,
                 'name' => $p->name,
                 'slug' => $p->slug,
-                'category_name' => $p->category?->name,
-                'subcategory_name' => $p->subcategory?->name,
-                'price' => $price,
-                'sale_price' => $sale,
-                'final_price' => $final,
-                'stock_quantity' => $p->stock_quantity ?? null,
-                'thumbnail_url' => $p->main_image_url ?? null, // adapt to your accessor
+                'category_name' => $p->subCategory?->category?->name,
+                'subcategory_name' => $p->subCategory?->name,
+                'price' => $p->price,
+                'sale_price' => $p->sale_price,
+                'final_price' => $p->final_price, // uses accessor
+                'stock' => $p->stock,
+                // If you have accessors for main image or thumbnail, adapt here:
+                'thumbnail_url' => $p->main_image ?? null,
             ];
         })->toArray();
 
-        // Return JSON: data + html links for frontend pagination handling
+        // Return JSON: data + rendered pagination links (if you still want HTML links)
         return response()->json([
             'data' => $data,
             'links' => $products->withQueryString()->links('pagination::bootstrap-5')->render(),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
         ]);
     }
 }
